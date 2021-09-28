@@ -1,3 +1,5 @@
+import pdb
+
 import matplotlib
 import matplotlib.pyplot as plt
 
@@ -92,22 +94,24 @@ class Gabor:
 
 
 class Vernier:
-    def __init__(self, sigma=9, freq=0.06):
+    def __init__(self, sigma=25, freq=0.02, var_noise=1):
         self.params = {
             "amplit": 0.5,  # amplitude [luminance units], min=-A,max=+A
             "freq": freq,  # spatial frequency [cycles/pixel]
             "orient": 0,  # orientation [radians]
             "phase": 0,  # phase [radians]
             "sigma": sigma,  # std.dev. of Gaussian envelope [pixels]
-            "diff_level": [1, 3, 5]
+            "diff_level": [1, 5, 9], # different of two gabor for vernier
+            "var_n": var_noise # var_noise: variation of diff level --> noise
         }
 
-    def genVernier(self, size, orient, diff, label):
+    def genVernier(self, size, orient, diff, label, var_noise=1):
         """
         :param size:
         :param orient: H(horizontal) or V(vertical)
         :param diff: 0,1,2 (easy medium hard)
         :param label: +1 or -1
+        :param var_noise variation of diff level --> noise:1
         :return: G
         """
         # generate Gabor
@@ -119,10 +123,13 @@ class Vernier:
         y = np.arange(-size[0] // 4, size[0] // 4)
         X, Y = np.meshgrid(x, y)
         self.params["orient"] = _orient * np.pi / 180
+        self.params["var_n"] = var_noise
         G = gabor(X, Y, self.params)
 
         # arrange Gabor into Vernier
-        jitter = self.params["diff_level"][diff] * label
+        diff_noi = np.around(np.random.normal(0,self.params["var_n"]))
+        jitter = int((self.params["diff_level"][diff] + diff_noi) * label)
+
         self.V = np.zeros(size)
         if orient == "H":
             self.V[0:size[0] // 2, size[1] // 4:size[1] * 3 // 4] = G

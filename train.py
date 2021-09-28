@@ -1,3 +1,5 @@
+import pdb
+
 import numpy as np
 import torch
 import torch.optim as optim
@@ -23,7 +25,7 @@ def ACC(outputs, labels, num_batch):
     # pdb.set_trace()
     num_test = len(outputs) // num_batch
     acc = np.zeros(num_test + 1)
-    total = torch.sign((outputs * labels + 1) / 2)
+    total = (torch.sign(outputs * labels) + 1) / 2
     for i in range(num_test):
         acc[i] = torch.sum(total[num_batch * i:num_batch * (i + 1)]) / num_batch
     acc[-1] = torch.sum(total) / len(outputs)
@@ -37,7 +39,7 @@ def np_sigmoid(x):
 
 def np_acc(outputs, labels):
     output = outputs.detach().numpy()
-    total = np.sign((output * labels + 1) / 2)
+    total = (np.sign(output * labels) + 1) / 2
     acc = np.sum(total) / len(output)
     return acc
 
@@ -45,17 +47,17 @@ def np_acc(outputs, labels):
 def train(show_epc):
     # input
     num_batch = 16
-    Img_L = GenImg(theta=90, loc="L")
-    Img_R = GenImg(theta=90, loc="R")
-    Img_th = GenImg(theta=180, loc="L")
+    Img_L = GenImg(orient='V', loc="L", diff=0)
+    Img_R = GenImg(orient='V', loc="R", diff=0)
+    Img_th = GenImg(orient='H', loc="L", diff=0)
     inputs = np.zeros([num_batch * 2, 1, 40, 18])
     labels = np.zeros([num_batch])
 
     # network
     # net = Net_cc()
-    # net = Net_cf()
+    net = Net_cf()
     # net = Net_fc()
-    net = Net_ff()
+    # net = Net_ff()
 
     criterion = torch.nn.BCEWithLogitsLoss()
 
@@ -69,21 +71,36 @@ def train(show_epc):
     num_test = 100
     t_inputs = np.zeros([num_test * 3 * 2, 1, 40, 18])
     t_labels = np.zeros([num_test * 3])
-    for i in range(num_test):
-        t_inputs[i, :, :, :] = representation(Img_L.gen_reference())
-        t_inputs[1 * num_test + i, :, :, :] = representation(
+    for i in range(num_test//2):
+        ######## !!!!!!!!test分别有两个读出！！！label一正一负！！！！组成一个大的dataset
+        t_inputs[2*i, :, :, :] = representation(Img_L.gen_reference())
+        t_inputs[2*i+1, :, :, :] = representation(Img_L.gen_reference())
+        t_inputs[1 * num_test + 2*i, :, :, :] = representation(
             Img_R.gen_reference())
-        t_inputs[2 * num_test + i, :, :, :] = representation(
+        t_inputs[1 * num_test + 2 * i+1, :, :, :] = representation(
+            Img_R.gen_reference())
+        t_inputs[2 * num_test + 2*i, :, :, :] = representation(
+            Img_th.gen_reference())
+        t_inputs[2 * num_test + 2 * i+1, :, :, :] = representation(
             Img_th.gen_reference())
 
-        t_labels[i], img_tg = Img_L.gen_theta()
-        t_inputs[3 * num_test + i, :, :, :] = representation(img_tg)
+        t_labels[2*i] = 1
+        t_labels[2*i+1] = -1
+        img_tg = Img_L.gen_test()
+        t_inputs[3 * num_test + 2*i, :, :, :] = representation(img_tg[0])
+        t_inputs[3 * num_test + 2*i+1, :, :, :] = representation(img_tg[1])
 
-        t_labels[1 * num_test + i], img_tg = Img_R.gen_theta()
-        t_inputs[4 * num_test + i, :, :, :] = representation(img_tg)
+        t_labels[1 * num_test+2*i] = 1
+        t_labels[1 * num_test+2*i+1] = -1
+        img_tg = Img_R.gen_test()
+        t_inputs[4 * num_test + 2*i, :, :, :] = representation(img_tg[0])
+        t_inputs[4 * num_test + 2*i+1, :, :, :] = representation(img_tg[1])
 
-        t_labels[2 * num_test + i], img_tg = Img_th.gen_theta()
-        t_inputs[5 * num_test + i, :, :, :] = representation(img_tg)
+        t_labels[2 * num_test+2*i] = 1
+        t_labels[2 * num_test+2*i+1] = -1
+        img_tg = Img_th.gen_test()
+        t_inputs[5 * num_test + 2*i, :, :, :] = representation(img_tg[0])
+        t_inputs[5 * num_test + 2 * i + 1, :, :, :] = representation(img_tg[1])
 
     test(net, t_inputs, num_test, t_labels)
 
@@ -92,7 +109,7 @@ def train(show_epc):
 
         for i in range(num_batch):
             inputs[i, :, :, :] = representation(Img_L.gen_reference())
-            labels[i], img_tg = Img_L.gen_theta()
+            labels[i], img_tg = Img_L.gen_train()
             inputs[num_batch + i, :, :, :] = representation(img_tg)
 
         optimizer.zero_grad()

@@ -105,3 +105,113 @@ class Net_ff(nn.Module):
         x = F.relu(self.layer2(x))
         x = self.readout(x)
         return x
+
+class Net_fc5(nn.Module):
+
+    def __init__(self):
+        # an affine operation: y = Wx + b
+        super(Net_fc5, self).__init__()
+        self.layer1 = torch.nn.Conv2d(in_channels=1,
+                                      out_channels=64,
+                                      kernel_size=(1, 1))
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.layer2 = nn.Conv2d(64, 6, 5)
+        # self.conv2 = nn.Conv2d(6, 16, 3)
+        self.readout = nn.Linear(756, 1)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = F.relu(self.layer1(x))
+        # Max pooling over a (2, 2) window
+        x = F.max_pool2d(F.relu(self.layer2(x)), (2, 2))
+        # If the size is a square, you can specify with a single number
+        # x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        x = torch.flatten(x, 1)
+        # pdb.set_trace()
+        x = self.readout(x)
+
+        return x
+
+
+class Net_fc7(nn.Module):
+
+    def __init__(self):
+        # an affine operation: y = Wx + b
+        super(Net_fc7, self).__init__()
+        self.layer1 = torch.nn.Conv2d(in_channels=1,
+                                      out_channels=64,
+                                      kernel_size=(1, 1))
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.layer2 = nn.Conv2d(64, 6, 7)
+        # self.conv2 = nn.Conv2d(6, 16, 3)
+        self.readout = nn.Linear(612, 1)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = F.relu(self.layer1(x))
+        # Max pooling over a (2, 2) window
+        x = F.max_pool2d(F.relu(self.layer2(x)), (2, 2))
+        # If the size is a square, you can specify with a single number
+        # x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        x = torch.flatten(x, 1)
+        # pdb.set_trace()
+        x = self.readout(x)
+
+        return x
+
+
+class Net_cc5(nn.Module):
+
+    def __init__(self):
+        # an affine operation: y = Wx + b
+        super(Net_cc5, self).__init__()
+        self.layer1 = torch.nn.Conv2d(1, 6, 3)
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.layer2 = nn.Conv2d(6, 10, 5)
+        # self.conv2 = nn.Conv2d(16, 32, 3)
+        self.readout = nn.Linear(140, 1)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = F.max_pool2d(F.relu(self.layer1(x)), (2, 2))
+        # Max pooling over a (2, 2) window
+        x = F.max_pool2d(F.relu(self.layer2(x)), (2, 2))
+        # If the size is a square, you can specify with a single number
+        # x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        x = torch.flatten(x, 1)
+        # pdb.set_trace()
+        x = self.readout(x)
+
+        return x
+
+class Net_cc7(nn.Module):
+
+    def __init__(self):
+        # an affine operation: y = Wx + b
+        super(Net_cc7, self).__init__()
+        self.layer1 = torch.nn.Conv2d(1, 6, 3)
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.layer2 = nn.Conv2d(6, 10, 7)
+        # self.conv2 = nn.Conv2d(16, 32, 3)
+        self.readout = nn.Linear(60, 1)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = F.max_pool2d(F.relu(self.layer1(x)), (2, 2))
+        # Max pooling over a (2, 2) window
+        x = F.max_pool2d(F.relu(self.layer2(x)), (2, 2))
+        # If the size is a square, you can specify with a single number
+        # x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        x = torch.flatten(x, 1)
+        # pdb.set_trace()
+        x = self.readout(x)
+
+        return x
