@@ -1,3 +1,5 @@
+import pdb
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -54,21 +56,20 @@ def train(show_epc, net_name):
     labels = np.zeros([num_batch])
 
     # network
-    if net_name is "CC":
-        net = Net_cc()
-    elif net_name is "CF":
-        net = Net_cf()
-    elif net_name is "FC":
-        net = Net_fc()
+    if net_name is "s_cc3":
+        net = Net_sCC()
+    elif net_name is "s_cc5":
+        net = Net_sCC5()
     else:
-        net = Net_ff()
+        # pdb.set_trace()
+        net = Net_sCC7()
 
     criterion = torch.nn.BCEWithLogitsLoss()
 
     optimizer = optim.Adam([
         {'params': net.layer2.parameters()},
         {'params': net.readout.parameters()},
-        {'params': net.layer1.parameters(), 'lr': 1e-7}
+        {'params': net.layer1.parameters(), 'lr': 1e-4}
     ], lr=1e-4)
     running_loss = 0.0
     # generate testing data, select 40 < L,R,TH < 60
@@ -99,8 +100,9 @@ def train(show_epc, net_name):
         t_inputs[2 * num_test + 2 * i, :, :, :] = representation(img_tg[0])
         t_inputs[2 * num_test + 2 * i + 1, :, :, :] = representation(
             img_tg[1])
+
     _epc = 1
-    acc_list[0, 1:] = test(net, t_inputs, num_test, t_labels)[:3]
+    acc_list[0, 1:] = test(net, t_inputs, num_test, t_labels)[:-1]
     acc_list[0, 0] = acc_list[0, 1]
 
     # Training
@@ -124,7 +126,7 @@ def train(show_epc, net_name):
         # print statistics
         running_loss += loss.item()
         if epoch % show_epc == show_epc - 1:  # print every show epoch
-            print_test=False
+            print_test = False
             acc = np_acc(outputs, labels)
             acc_list[_epc, 0] = acc
             loss_list[_epc - 1, 0] = running_loss / show_epc
@@ -132,31 +134,54 @@ def train(show_epc, net_name):
                 print('[%d] loss: %.6f' %
                       (epoch + 1, running_loss / show_epc))
                 print('train acc: %.2f %%' % (acc * 100))
-                print_test=True
+                print_test = True
             PATH = './net.pth'
             torch.save(net.state_dict(), PATH)
             running_loss = 0.0
-            acc_list[_epc, 1:] = test(net, t_inputs, num_test, t_labels,print_test)[:3]
+            acc_list[_epc, 1:] = test(net, t_inputs, num_test, t_labels,
+                                      print_test)[:-1]
             _epc += 1
-    return acc_list, loss_list
+    return acc_list, loss_list, net
 
+def normalize(x):
+    sigma = np.std(x,axis=0)
+    return x/sigma
 
-AccALL = np.zeros([20, 101, 4])
-LossALL = np.zeros([20, 100, 1])
-net_list = ['CC3', 'CC5', 'CC7', 'FC3','FC5','FC7']
+def hebbian_learning(rules, net, show_epc=2):
+    Img_L = GenImg(orient='V', loc="L", diff=1)
+    Img_R = GenImg(orient='V', loc="R", diff=1)
+    Img_th = GenImg(orient='H', loc="L", diff=1)
+
+    # Initialization for Oja # w和q两种更新策略分别是recurrent & feedforward
+    W = normalize(np.random.rand(40*18, 40*18)) # weight x->x
+    Q = normalize(np.random.rand(40*18, 40*18)) # weight x->y
+    lr = 0.01
+
+    for epoch in range(200):
+        labels, img_tg = Img_L.gen_train()
+        x = representation(img_tg).flatten()
+        x_ = np.dot(W,np.dot(W,np.dot(W,np.dot(W,np.dot(W, x))))) #收敛
+        y = np.dot(Q,x)
+        W = W + lr*[np.dot(x_.T,x)-W*x_**2]
+        Q = Q + lr*[np.dot(y.T,x)-W*y**2]
+
+    # Initialization for BCM # w和q两种更新策略分别是recurrent & feedforward
+
+    # Initialization for anti-Hebb #
+    W = normalize(np.random.rand(40*18, 40*18)) # weight x->x
+    Q = np.zeros([40*18, 40*18]) # weight x->y
+AccALL = np.zeros([50, 101, 4])
+LossALL = np.zeros([50, 100, 1])
+net_list = ['s_cc3']
 for net_name in net_list:
-    for num_train in range(20):
-        AccALL[num_train, :, :], LossALL[num_train, :, :] = train(show_epc=2,
-                                                                  net_name=net_name)
+    AccALL[0, :, :], LossALL[0, :, :], DL_net = train(show_epc=2, net_name=net_name)
     print('====================================\n')
-    print('Finish ' + net_name)
-    Acc = np.squeeze(np.mean(AccALL, axis=0))
-    Loss = np.squeeze(np.mean(LossALL, axis=0))
-    np.save('./0926/'+net_name + '_acc.npy', AccALL)
-    np.save('./0926/'+net_name + '_loss.npy', LossALL)
+    print('Finish Decision Layer')
+    Acc = np.squeeze(AccALL[0, :, :])
+    Loss = np.squeeze(LossALL[0, :, :])
+
     plt.style.available
     plt.style.use('seaborn')
-    plt.rcParams.update({'font.size': 40})
     # pdb.set_trace()
     plt.figure(figsize=(20, 12), dpi=80)
 
@@ -164,14 +189,16 @@ for net_name in net_list:
     plt.plot(np.arange(1, 200, 2), Loss, linewidth=4)
 
     plt.title("Train with " + net_name, fontsize=24)
-    plt.ylabel("Loss")
-    plt.xlabel("No. epoch")
+    plt.ylabel("Loss", fontsize=18)
+    plt.xlabel("No. epoch", fontsize=18)
 
     plt.subplot(222)
     plt.plot(np.arange(0, 202, 2), Acc * 100, linewidth=4,
              label=["train", "test", "loc2", "ori2"])
+
     plt.title("Train with " + net_name, fontsize=24)
-    plt.ylabel("Accuracy %")
-    plt.xlabel("No. epoch")
+    plt.ylabel("Accuracy %", fontsize=18)
+    plt.xlabel("No. epoch", fontsize=18)
     plt.legend(loc='upper left')
-    plt.savefig('./0926/'+net_name +'.jpg')
+    plt.savefig('./1027/' + net_name + '.jpg')
+

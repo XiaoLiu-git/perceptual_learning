@@ -215,3 +215,122 @@ class Net_cc7(nn.Module):
         x = self.readout(x)
 
         return x
+
+class Net_smCC(nn.Module):
+
+    def __init__(self):
+        # an affine operation: y = Wx + b
+        super(Net_smCC, self).__init__()
+        self.layer1 = torch.nn.Conv2d(1, 6, 3)
+
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.layer2 = nn.Conv2d(6, 10, 3)
+        # self.conv2 = nn.Conv2d(16, 32, 3)
+        self.readout = nn.Conv2d(10, 1, 3)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = F.max_pool2d(F.relu(self.layer1(x)), (2, 2))
+        # Max pooling over a (2, 2) window
+        x = F.max_pool2d(F.relu(self.layer2(x)), (2, 2))
+        # If the size is a square, you can specify with a single number
+        # x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        # x = torch.flatten(x, 1)
+        x = self.readout(x)
+        # pdb.set_trace()
+        x = torch.flatten(x, 1).unsqueeze(1)
+        x = F.max_pool1d(x, 6)
+        x = torch.flatten(x, 1)
+        return x
+
+
+class Net_sCC(nn.Module):
+
+    def __init__(self):
+        # an affine operation: y = Wx + b
+        super(Net_sCC, self).__init__()
+        self.layer1 = torch.nn.Conv2d(1, 6, 3)
+
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.layer2 = nn.Conv2d(6, 10, 3)
+        # self.conv2 = nn.Conv2d(16, 32, 3)
+        self.readout = nn.Conv2d(10, 1, 3)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = F.relu(self.layer1(x))
+        # Max pooling over a (2, 2) window
+        x = F.relu(self.layer2(x))
+        # If the size is a square, you can specify with a single number
+        # x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        # x = torch.flatten(x, 1)
+        x = self.readout(x)
+        # pdb.set_trace()
+        x = torch.flatten(x, 1).unsqueeze(1)
+        x = F.max_pool1d(x, 408)
+        x = torch.flatten(x, 1)
+        return x
+
+
+class Net_sCC5(nn.Module):
+
+    def __init__(self):
+        # an affine operation: y = Wx + b
+        super(Net_sCC5, self).__init__()
+        self.layer1 = torch.nn.Conv2d(1, 6, 5)
+
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.layer2 = nn.Conv2d(6, 10, 5)
+        # self.conv2 = nn.Conv2d(16, 32, 3)
+        self.readout = nn.Conv2d(10, 1, 5)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = F.relu(self.layer1(x))
+        # Max pooling over a (2, 2) window
+        x = F.relu(self.layer2(x))
+        # If the size is a square, you can specify with a single number
+        # x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        # x = torch.flatten(x, 1)
+        x = self.readout(x)
+        # pdb.set_trace()
+        x = torch.flatten(x, 1).unsqueeze(1)
+        x = F.max_pool1d(x, 168)
+        x = torch.flatten(x, 1)
+        return x
+
+
+class Net_sCC7(nn.Module):
+
+    def __init__(self):
+        # an affine operation: y = Wx + b
+        super(Net_sCC7, self).__init__()
+        self.layer1 = torch.nn.Conv2d(1, 6, 2)
+
+        # 1 input image channel, 6 output channels, 5x5 square convolution
+        # kernel
+        self.layer2 = nn.Conv2d(6, 10, 7)
+        # self.conv2 = nn.Conv2d(16, 32, 3)
+        self.readout = nn.Conv2d(10, 1, 7)
+
+    def forward(self, x):
+        # pdb.set_trace()
+        # x = torch.flatten(x, 1) # flatten all dimensions except the batch dimension
+        x = F.relu(self.layer1(x))
+        # Max pooling over a (2, 2) window
+        x = F.relu(self.layer2(x))
+        # If the size is a square, you can specify with a single number
+        # x = F.max_pool2d(F.relu(self.conv2(x)), 2)
+        # x = torch.flatten(x, 1)
+        x = self.readout(x)
+        # pdb.set_trace()
+        x = torch.flatten(x, 1).unsqueeze(1)
+        x = F.max_pool1d(x, 135)
+        x = torch.flatten(x, 1)
+        return x

@@ -58,18 +58,18 @@ def train(show_epc, net_name):
     labels = np.zeros([num_batch])
 
     # network
-    if net_name is "FC5":
-        net = Net_fc5()
+    if net_name is "FC3":
+        net = Net_fc()
     else:
-        net = Net_cc5()
+        net = Net_cc()
 
     criterion = torch.nn.BCEWithLogitsLoss()
 
     optimizer = optim.Adam([
         {'params': net.layer2.parameters()},
         {'params': net.readout.parameters()},
-        {'params': net.layer1.parameters(), 'lr': 1e-5}
-    ], lr=1e-5)
+        {'params': net.layer1.parameters(), 'lr': 1e-4}
+    ], lr=1e-4)
     running_loss = 0.0
     # generate testing data, select 40 < L,R,TH < 60
     acc_list = np.zeros([200 // show_epc + 1, 6])
@@ -97,20 +97,20 @@ def train(show_epc, net_name):
         t_labels[2 * num_test + 2 * i] = 1
         t_labels[2 * num_test + 2 * i + 1] = -1
 
-        t_inputs[2 * num_test + 2 * i, :, :, :] = np.roll(reprs0, 3, axis=0)
-        t_inputs[2 * num_test + 2 * i + 1, :, :, :] = np.roll(reprs1, 3, axis=0)
+        t_inputs[2 * num_test + 2 * i, :, :, :] = np.roll(reprs0, 5, axis=0)
+        t_inputs[2 * num_test + 2 * i + 1, :, :, :] = np.roll(reprs1, 5, axis=0)
 
         t_labels[3 * num_test + 2 * i] = 1
         t_labels[3 * num_test + 2 * i + 1] = -1
 
-        t_inputs[3 * num_test + 2 * i, :, :, :] = np.roll(reprs0, 5, axis=0)
-        t_inputs[3 * num_test + 2 * i + 1, :, :, :] = np.roll(reprs1, 5, axis=0)
+        t_inputs[3 * num_test + 2 * i, :, :, :] = np.roll(reprs0, 10, axis=0)
+        t_inputs[3 * num_test + 2 * i + 1, :, :, :] = np.roll(reprs1, 10, axis=0)
 
         t_labels[4 * num_test + 2 * i] = 1
         t_labels[4 * num_test + 2 * i + 1] = -1
 
-        t_inputs[4 * num_test + 2 * i, :, :, :] = np.roll(reprs0, 10, axis=0)
-        t_inputs[4 * num_test + 2 * i + 1, :, :, :] = np.roll(reprs1, 10,
+        t_inputs[4 * num_test + 2 * i, :, :, :] = np.roll(reprs0, 15, axis=0)
+        t_inputs[4 * num_test + 2 * i + 1, :, :, :] = np.roll(reprs1, 15,
                                                               axis=0)
 
     _epc = 1
@@ -158,7 +158,7 @@ def train(show_epc, net_name):
 
 AccALL = np.zeros([20, 101, 6])
 LossALL = np.zeros([20, 100, 1])
-net_list = ['CC5', 'FC5']
+net_list = ['CC3', 'FC3']
 for net_name in net_list:
     for num_train in range(20):
         AccALL[num_train, :, :], LossALL[num_train, :, :] = train(show_epc=2,
@@ -183,7 +183,7 @@ for net_name in net_list:
 
     plt.subplot(222)
     plt.plot(np.arange(0, 202, 2), Acc * 100, linewidth=4,
-             label=["train", "test", "loc_1", "loc_3", "loc_5", "loc_10"])
+             label=["train", "test", "loc_1", "loc_5", "loc_10", "loc_15"])
     plt.title("Train with " + net_name, fontsize=24)
     plt.ylabel("Accuracy %", fontsize=18)
     plt.xlabel("No. epoch", fontsize=18)
