@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 
 matplotlib.use('TkAgg')
 import numpy as np
+import cv2
 
 
 def grating(X, Y, params):
@@ -55,7 +56,6 @@ def gabor(X, Y, params):
     """
 
     sigmasq = params["sigma"] ** 2
-
     Gaussian = np.exp(-(X ** 2 + Y ** 2) / (2 * sigmasq))
     Grating = grating(X, Y, params)
     G = Gaussian * Grating
@@ -94,50 +94,50 @@ class Gabor:
 
 
 class Vernier:
-    def __init__(self, sigma=25, freq=0.02, var_noise=1):
+    def __init__(self, sigma=25, freq=0.02, var_noise=0.5):
         self.params = {
             "amplit": 0.5,  # amplitude [luminance units], min=-A,max=+A
             "freq": freq,  # spatial frequency [cycles/pixel]
             "orient": 0,  # orientation [radians]
             "phase": 0,  # phase [radians]
             "sigma": sigma,  # std.dev. of Gaussian envelope [pixels]
-            "diff_level": [1, 5, 9], # different of two gabor for vernier
+            "diff_level": [3, 5, 9], # different of two gabor for vernier
             "var_n": var_noise # var_noise: variation of diff level --> noise
         }
 
-    def genVernier(self, size, orient, diff, label, var_noise=1):
+    def genVernier(self, size, orient, diff, label, var_noise):
         """
         :param size:
-        :param orient: H(horizontal) or V(vertical)
+        :param orient: "V, H" or 0-180
         :param diff: 0,1,2 (easy medium hard)
         :param label: +1 or -1
         :param var_noise variation of diff level --> noise:1
         :return: G
         """
-        # generate Gabor
-        if orient == "H":
-            _orient = 0
+        if orient == 'V':
+            _orient = 45
+        elif orient == 'H':
+            _orient = 135
         else:
-            _orient = 90
+            _orient = orient
+        # generate Gabor
         x = np.arange(-size[1] // 4, size[1] // 4)
         y = np.arange(-size[0] // 4, size[0] // 4)
         X, Y = np.meshgrid(x, y)
-        self.params["orient"] = _orient * np.pi / 180
+        self.params["orient"] = 0 * np.pi / 180  # ori of gabor is 0
         self.params["var_n"] = var_noise
         G = gabor(X, Y, self.params)
 
         # arrange Gabor into Vernier
-        diff_noi = np.around(np.random.normal(0,self.params["var_n"]))
+        diff_noi = np.abs(np.around(np.random.normal(0,self.params["var_n"])))
         jitter = int((self.params["diff_level"][diff] + diff_noi) * label)
 
         self.V = np.zeros(size)
-        if orient == "H":
-            self.V[0:size[0] // 2, size[1] // 4:size[1] * 3 // 4] = G
-            self.V[size[0] // 2:, size[1] // 4 + jitter: size[1] * 3 // 4 + jitter] = G
-        else:
-            self.V[size[0] // 4:size[0] * 3 // 4, 0:size[1] // 2] = G
-            self.V[size[0] // 4 + jitter: size[0] * 3 // 4 + jitter,size[1] // 2:] = G
-
+        self.V[0:size[0] // 2, size[1] // 4-jitter:size[1] * 3 // 4-jitter] = G
+        self.V[size[0] // 2:, size[1] // 4 + jitter:size[1] * 3 // 4 + jitter] = G
+        # pdb.set_trace()
+        M = cv2.getRotationMatrix2D((size[0]//2, size[1]//2), _orient, 1)
+        self.V = cv2.warpAffine(self.V, M, (size[0],size[1]))
         return self.V
 
     def show(self):
@@ -146,6 +146,4 @@ class Vernier:
         plt.show(block=False)
         plt.pause(0.5)
         plt.close()
-
-
 

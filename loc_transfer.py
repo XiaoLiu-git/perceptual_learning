@@ -182,10 +182,10 @@ for net_name in net_list:
     plt.xlabel("No. epoch", fontsize=18)
 
     plt.subplot(222)
-    plt.plot(np.arange(0, 202, 2), Acc * 100, linewidth=4,
-             label=["train", "test", "loc_1", "loc_5", "loc_10", "loc_15"])
-    plt.title("Train with " + net_name, fontsize=24)
-    plt.ylabel("Accuracy %", fontsize=18)
-    plt.xlabel("No. epoch", fontsize=18)
-    plt.legend(loc='upper left')
-    plt.savefig('./0928/' + net_name + '.jpg')
+plt.plot(np.arange(0, 202, 2), Acc * 100, linewidth=4,
+         label=["train", "test", "loc_1", "loc_5", "loc_10", "loc_15"])
+plt.title("Train with " + net_name, fontsize=24)
+plt.ylabel("Accuracy %", fontsize=18)
+plt.xlabel("No. epoch", fontsize=18)
+plt.legend(loc='upper left')
+plt.savefig('./0928/' + net_name + '.jpg')

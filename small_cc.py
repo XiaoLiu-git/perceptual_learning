@@ -171,7 +171,7 @@ def train(show_epc, net_name):
 
 AccALL = np.zeros([50, 101, 7])
 LossALL = np.zeros([50, 100, 1])
-net_list = ['s_cc7','s_cc5']
+net_list = ['s_cc','s_cc5']
 for net_name in net_list:
     for num_train in range(50):
         AccALL[num_train, :, :], LossALL[num_train, :, :] = train(show_epc=2,

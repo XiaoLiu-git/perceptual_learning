@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 
 matplotlib.use('TkAgg')
 import numpy as np
-from tool_gabor import Vernier, Gabor
+from tool_gabor_45 import Vernier, Gabor
 
 plt.style.use("fivethirtyeight")
 class GenImg:
-    def __init__(self, size=None, orient='H', loc="L", noise_cutout=0.5, diff=2,
+    def __init__(self, size=None, orient='H', loc="L", noise_cutout=0.7, diff=2,
                  var_noise=1):
         """
 
@@ -104,7 +104,7 @@ def representation(img, num_x=40, num_theta=18):
                                                theta * 180 / num_theta)
         # show_img(basis_gabor[:,:,theta])
     for x in range(num_x):
-        center = w * x // num_x
+        center = w * (x+5) // num_x
         # pdb.set_trace()
         img_cut = np.roll(img, center, axis=0)[:func_size[0], :]
         # show_img(img_cut)
@@ -113,29 +113,29 @@ def representation(img, num_x=40, num_theta=18):
             activity[x, theta] = (img_cut * basis_gabor[:, :, theta]).sum()
     return activity
 
-
-genimg = GenImg(orient='H', loc="R", diff=2)
-
-label, img_tg = genimg.gen_train()
-
-show_img(img_tg.T)
-
-activity_tg = representation(img_tg)
-show_img(activity_tg)
-
-print(label)
-
-genimg = GenImg(orient='V', loc="L", diff=2)
-
-label, img_tg = genimg.gen_train()
-
-show_img(img_tg.T)
-
-activity_tg = representation(img_tg)
-show_img(activity_tg)
-print(label)
+#
+# genimg = GenImg(orient='V', loc="R", diff=0)
+#
+# label, img_tg = genimg.gen_train()
+#
+# show_img(img_tg.T)
+# print(label)
+# activity_tg = representation(img_tg)
+# show_img(activity_tg)
+#
+#
+#
+# genimg = GenImg(orient='V', loc="R", diff=0)
+#
+# label, img_tg = genimg.gen_train()
+#
+# show_img(img_tg.T)
+# print(label)
+# activity_tg = representation(img_tg)
+# show_img(activity_tg)
+#
 # #
-# genimg = GenImg(orient='V', loc="R", diff=1)
+# genimg = GenImg(orient='V', loc="L", diff=1)
 #
 # label, img_tg = genimg.gen_train()
 #
