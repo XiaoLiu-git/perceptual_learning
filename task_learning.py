@@ -1,10 +1,12 @@
+import pdb
 from datetime import datetime
 
 import numpy as np
 import torch
 import torch.optim as optim
-import feature_learning as fl
+
 import offline_Hebb as ob
+import feature_learning as fl
 
 
 def GenTestData(_ori, num=10, loc="L", diff=0):
@@ -24,21 +26,10 @@ def GenTestData(_ori, num=10, loc="L", diff=0):
     return dataset, label
 
 
-def feedforward(x, W):
-    """
-    :param x:size [num * 2 * num_ori, 1, 40, 18]
-    :param W: size[40, 18]
-    :return: Y: same size as x, Y=x*W
-    """
-    return x * W
-
-
-def ff_train(show_epc, net_name, slow_learning=True):
+def ff_train(show_epc, net_name, slow_learning=True, bg_epoch=0):
     # input
     num_batch = 16
     Img_L = ob.GenImg(orient='V', loc="L", diff=0)
-    Img_R = ob.GenImg(orient='V', loc="R", diff=0)
-    Img_DT = ob.GenImg(orient='H', loc="R", diff=0)
     Img_th = ob.GenImg(orient='H', loc="L", diff=0)
     inputs = np.zeros([num_batch, 1, 40, 18])
     labels = np.zeros([num_batch])
@@ -141,30 +132,21 @@ def ff_train(show_epc, net_name, slow_learning=True):
             img_tg[1]), 35, axis=0)
 
     _epc = 1
-    # pdb.set_trace()
     t_inputs = fl.norma_rep(t_inputs)
+
     acc_list[0, 1:] = ob.test(net, t_inputs, num_test, t_labels)[:-1]
     acc_list[0, 0] = acc_list[0, 1]
     best_acc = np.zeros(np.size(acc_list[0, :]))
 
     # Training
     weight = np.ones([40, 1])
-
     for epoch in range(200):  # loop over the dataset multiple times
 
-        rand_loc = np.random.randint(-5, 6, num_batch)
         for i in range(num_batch):
             labels[i], img_tg = Img_L.gen_train()
-            inputs[i, :, :, :] = np.roll(ob.representation(img_tg),
-                                         rand_loc[i], axis=0)
+            inputs[i, :, :, :] = ob.representation(img_tg)
 
         inputs = fl.norma_rep(inputs)
-        inputs = fl.feedforward(inputs, weight)
-        inputs = fl.norma_rep(inputs)
-
-        if epoch > 20:
-            weight = fl.update_weight(weight, inputs)
-
 
         optimizer.zero_grad()
         b_x = torch.tensor(inputs, dtype=torch.float32)
@@ -191,7 +173,6 @@ def ff_train(show_epc, net_name, slow_learning=True):
             PATH = './net.pth'
             torch.save(net.state_dict(), PATH)
             running_loss = 0.0
-
             t_input_ff = fl.feedforward(t_inputs, weight)
             t_input_ff = fl.norma_rep(t_input_ff)
             acc_test = ob.test(net, t_input_ff, num_test, t_labels, print_test)
@@ -215,47 +196,46 @@ def ff_train(show_epc, net_name, slow_learning=True):
 day = datetime.now().strftime('%Y-%m-%d')
 foldername = './' + day
 ob.mkdir(foldername)
-num_section = 50
+num_section = 20
 num_test = 10
 ori = 22.5
 loc = 5
 AccALL = np.zeros([num_section, 101, 10])
 LossALL = np.zeros([num_section, 100, 1])
 Acc_test = np.zeros([num_section, int(40 / loc), int(180 / ori)])
-Acc_test_fx = np.zeros([num_section, int(40 / loc), int(180 / ori)])
-Acc_test_db = np.zeros([num_section, 200, int(40 / loc), int(180 / ori)])
 print_test = False
 net_list = ['s_cc3']
 t_data, t_label = GenTestData(_ori=ori)
-size_input = t_data.shape
 t_data = fl.norma_rep(t_data)
+
 # pdb.set_trace()
 
 for net_name in net_list:
-    for s in range(num_section):
-        ### Training
-        AccALL[s, :, :], LossALL[s, :, :], net, weight = ff_train(
-            show_epc=2,
-            net_name=net_name,
-            slow_learning=False)
+    for begin_epoch in [1]:
+        for s in range(num_section):
+            ### Training
+            AccALL[s, :, :], LossALL[s, :, :], net, weight = ff_train(
+                show_epc=2,
+                net_name=net_name,
+                slow_learning=False,
+                bg_epoch=begin_epoch)
+            print(AccALL[s, :, :])
 
+            ### Testing for different location
 
-        ### Testing for different location
+            for i in range(40 // loc):
+                y = fl.feedforward(t_data, weight)
+                y = fl.norma_rep(y)
 
-        for i in range(40 // loc):
-            y = fl.feedforward(t_data, weight)
-            y = fl.norma_rep(y)
-            # plt.subplot(2, 4, i+1)
-            # plt.imshow(y[1].squeeze())
-            Acc_test[s, i, :] = ob.test(net, y, num_test * 2, t_label,
-                                        print_test)[:-1]
-            Acc_test_fx[s, i, :] = ob.test(net, t_data, num_test * 2, t_label,
-                                           print_test)[:-1]
-            t_data = np.roll(t_data, -5, axis=2)
-        print(Acc_test_fx[s])
-        print(Acc_test[s])
+                # plt.subplot(2, 4, i+1)
+                # plt.imshow(y[1].squeeze())
+                Acc_test[s, i, :] = ob.test(net, y, num_test * 2, t_label,
+                                            print_test)[:-1]
+                t_data = np.roll(t_data, -5, axis=2)
+            print(Acc_test[s])
 
-    np.save(foldername + '/gen_0051' + net_name + 'AccALL.npy', AccALL)
-    np.save(foldername + '/gen_0051' + net_name + 'LossALL.npy', LossALL)
-    np.save(foldername + '/gen_0051' + net_name + 'Acc_test.npy', Acc_test)
-    np.save(foldername + '/gen_0051' + net_name + 'Acc_testfx.npy', Acc_test_fx)
+        name_head = foldername + '/task_module' + net_name
+        np.save(name_head + net_name + 'AccALL.npy', AccALL)
+        np.save(name_head + 'LossALL.npy', LossALL)
+        np.save(name_head + 'Acc_test.npy', Acc_test)
+

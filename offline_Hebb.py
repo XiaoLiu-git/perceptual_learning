@@ -1,3 +1,5 @@
+import pdb
+
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -15,13 +17,8 @@ def test(net, inputs, num_batch, labels, prt=False):
         outputs = outputs.squeeze(1)
         acc = ACC(outputs, labels, num_batch)
         if prt:
-            print("Accuracy: {:.1f}% {:.1f}% {:.1f}% {:.1f}% {:.1f}%".format(
-                acc[0] * 100,
-                acc[1] * 100,
-                acc[2] * 100,
-                acc[3] * 100,
-                acc[4] * 100
-            ))
+            print("Accuracy:")
+            print(np.around(acc,3) * 100)
     return acc
 
 

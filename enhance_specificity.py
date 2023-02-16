@@ -26,7 +26,136 @@ def GenTestData(_ori, num=10, loc="L", diff=0):
 
 
 
-def ff_train(show_epc, net_name, slow_learning=True, bg_epoch=0):
+def first_train(show_epc, net_name, bg_epoch=0):
+    # input
+    num_batch = 16
+    Img_L = ob.GenImg(orient='V', loc="L", diff=0)
+    Img_R = ob.GenImg(orient='V', loc="R", diff=0)
+    Img_DT = ob.GenImg(orient='H', loc="R", diff=0)
+    Img_th = ob.GenImg(orient='H', loc="L", diff=0)
+    inputs = np.zeros([num_batch, 1, 40, 18])
+    labels = np.zeros([num_batch])
+
+    # network
+    if net_name is "s_cc3":
+        net = ob.Net_sCC()
+    elif net_name is "s_cc5":
+        net = ob.Net_sCC5()
+    elif net_name is "s_fc3":
+        net = ob.Net_sFC()
+    else:
+        # pdb.set_trace()
+        net = ob.Net_sCC7()
+
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    optimizer = optim.Adam([
+        {'params': net.layer2.parameters()},
+        {'params': net.readout.parameters()},
+        {'params': net.layer1.parameters(), 'lr': 1e-3}
+    ], lr=1e-3)
+    running_loss = 0.0
+    # generate testing data, select 40 < L,R,TH < 60
+    acc_list = np.zeros([bg_epoch//show_epc + 1, 5])
+    loss_list = np.zeros([bg_epoch // show_epc, 1])
+    num_test = 20
+
+    t_inputs = np.zeros([num_test * 4, 1, 40, 18])
+    t_labels = np.zeros([num_test * 4])
+    for i in range(num_test // 2):
+        t_labels[2 * i] = 1
+        t_labels[2 * i + 1] = -1
+        # pdb.set_trace()
+        img_tg = Img_L.gen_test()
+        t_inputs[2 * i, :, :, :] = ob.representation(img_tg[0])
+        t_inputs[2 * i + 1, :, :, :] = ob.representation(img_tg[1])
+
+        t_labels[1 * num_test + 2 * i] = 1
+        t_labels[1 * num_test + 2 * i + 1] = -1
+        img_tg = Img_DT.gen_test()
+        t_inputs[1 * num_test + 2 * i, :, :, :] = ob.representation(img_tg[0])
+        t_inputs[1 * num_test + 2 * i + 1, :, :, :] = ob.representation(
+            img_tg[1])
+
+        t_labels[2 * num_test + 2 * i] = 1
+        t_labels[2 * num_test + 2 * i + 1] = -1
+        img_tg = Img_R.gen_test()
+        t_inputs[2 * num_test + 2 * i, :, :, :] = ob.representation(img_tg[0])
+        t_inputs[2 * num_test + 2 * i + 1, :, :, :] = ob.representation(
+            img_tg[1])
+
+        t_labels[3 * num_test + 2 * i] = 1
+        t_labels[3 * num_test + 2 * i + 1] = -1
+        img_tg = Img_th.gen_test()
+        t_inputs[3 * num_test + 2 * i, :, :, :] = ob.representation(img_tg[0])
+        t_inputs[3 * num_test + 2 * i + 1, :, :, :] = ob.representation(
+            img_tg[1])
+
+    _epc = 1
+    t_inputs = fl.norma_rep(t_inputs)
+
+    acc_list[0, 1:] = ob.test(net, t_inputs, num_test, t_labels)[:-1]
+    acc_list[0, 0] = acc_list[0, 1]
+    best_acc = np.zeros(np.size(acc_list[0, :]))
+
+    # Training
+    weight = np.ones([40, 1])
+    for epoch in range(bg_epoch):  # loop over the dataset multiple times
+        for i in range(num_batch):
+            labels[i], img_tg = Img_L.gen_train()
+            inputs[i, :, :, :] = ob.representation(img_tg)
+
+        inputs = fl.norma_rep(inputs)
+        inputs = fl.feedforward(inputs,weight)
+        inputs = fl.norma_rep(inputs)
+
+
+        if epoch > 0:
+            weight = fl.update_weight(weight,inputs)
+
+        optimizer.zero_grad()
+        b_x = torch.tensor(inputs, dtype=torch.float32)
+        outputs = net(b_x)
+        outputs = outputs.squeeze(1)
+
+        loss = criterion(outputs, torch.FloatTensor((labels + 1) // 2))
+        # pdb.set_trace()
+        loss.backward()
+        optimizer.step()
+
+        # print statistics
+        running_loss += loss.item()
+        if epoch % show_epc == show_epc - 1:  # print every show epoch
+            print_test = False
+            acc = ob.np_acc(outputs, labels)
+            acc_list[_epc, 0] = acc
+            loss_list[_epc - 1, 0] = running_loss / show_epc
+            if epoch % (show_epc * 10) == show_epc * 10 - 1:
+                print('[%d] loss: %.6f' %
+                      (epoch + 1, running_loss / show_epc))
+                print('train acc: %.2f %%' % (acc * 100))
+                print_test = True
+            PATH = './net.pth'
+            torch.save(net.state_dict(), PATH)
+            running_loss = 0.0
+            t_input_ff = fl.feedforward(t_inputs,weight)
+            t_input_ff = fl.norma_rep(t_input_ff)
+            acc_test = ob.test(net, t_input_ff, num_test, t_labels, print_test)
+            acc_list[_epc, 1:] = acc_test[:-1]
+            if acc_test[-1] > best_acc[-1]:
+                best_net = net
+                best_acc = acc_test
+            _epc += 1
+
+    print("Best Accuracy: {:.1f}% {:.1f}% {:.1f}% {:.1f}% {:.1f}%".format(
+        best_acc[0] * 100,
+        best_acc[1] * 100,
+        best_acc[2] * 100,
+        best_acc[3] * 100,
+        best_acc[4] * 100))
+    return acc_list, loss_list, net, weight
+
+def sec_train(show_epc, net_name, bg_epoch=0):
     # input
     num_batch = 16
     Img_L = ob.GenImg(orient='V', loc="L", diff=0)
@@ -103,7 +232,7 @@ def ff_train(show_epc, net_name, slow_learning=True, bg_epoch=0):
     for epoch in range(200):  # loop over the dataset multiple times
 
         for i in range(num_batch):
-            labels[i], img_tg = Img_L.gen_train()
+            labels[i], img_tg = Img_DT.gen_train()
             inputs[i, :, :, :] = ob.representation(img_tg)
 
         inputs = fl.norma_rep(inputs)
@@ -111,7 +240,7 @@ def ff_train(show_epc, net_name, slow_learning=True, bg_epoch=0):
         inputs = fl.norma_rep(inputs)
 
 
-        if epoch > bg_epoch:
+        if epoch > 20:
             weight = fl.update_weight(weight,inputs)
 
         optimizer.zero_grad()
@@ -156,9 +285,6 @@ def ff_train(show_epc, net_name, slow_learning=True, bg_epoch=0):
         best_acc[4] * 100))
     return acc_list, loss_list, net, weight
 
-
-# plt.style.available
-# plt.style.use('seaborn')
 day = datetime.now().strftime('%Y-%m-%d')
 foldername = './' + day
 ob.mkdir(foldername)
@@ -166,11 +292,7 @@ num_section = 50
 num_test = 10
 ori = 22.5
 loc = 5
-AccALL = np.zeros([num_section, 101, 5])
-LossALL = np.zeros([num_section, 100, 1])
-Acc_test = np.zeros([num_section, int(40 / loc), int(180 / ori)])
-Acc_test_fx = np.zeros([num_section, int(40 / loc), int(180 / ori)])
-Acc_test_db = np.zeros([num_section,200, int(40 / loc), int(180 / ori)])
+show_epoch = 2
 print_test = False
 net_list = ['s_cc3']
 t_data, t_label = GenTestData(_ori=ori)
@@ -179,62 +301,30 @@ t_data = fl.norma_rep(t_data)
 # pdb.set_trace()
 
 for net_name in net_list:
-    for begin_epoch in [20, 30, 40, 50]:
+    for begin_epoch in [20, 80, 140, 200]:
+        num_epoch = begin_epoch//show_epoch+1
+        AccALL1 = np.zeros([num_section, num_epoch, 5])
+        LossALL1 = np.zeros([num_section, num_epoch-1, 1])
+        AccALL2 = np.zeros([num_section, 101, 5])
+        LossALL2 = np.zeros([num_section, 100, 1])
         for s in range(num_section):
             ### Training
-            AccALL[s, :, :], LossALL[s, :, :], net, weight = ff_train(
-                show_epc=2,
+            AccALL1[s, :, :], LossALL1[s, :, :], net, weight = first_train(
+                show_epc=show_epoch,
                 net_name=net_name,
-                slow_learning=False,
                 bg_epoch=begin_epoch)
+
+            AccALL2[s, :, :], LossALL2[s, :, :], net, weight = sec_train(
+                show_epc=show_epoch,
+                net_name=net_name,
+                bg_epoch=200)
 
             ### Testing for different location
 
-            for i in range(40 // loc):
-                y = fl.feedforward(t_data, weight)
-                y = fl.norma_rep(y)
 
-                # plt.subplot(2, 4, i+1)
-                # plt.imshow(y[1].squeeze())
-                Acc_test[s, i, :] = ob.test(net, y, num_test * 2, t_label,
-                                            print_test)[:-1]
-                Acc_test_fx[s, i, :] = ob.test(net, t_data, num_test * 2, t_label,
-                                               print_test)[:-1]
-                t_data = np.roll(t_data, -5, axis=2)
-            print(Acc_test_fx[s])
-            print(Acc_test[s])
-            pdb.set_trace()
+        name_head = foldername + '/eSpec_'+str(begin_epoch) + net_name
+        np.save(name_head + net_name + 'AccALL1.npy', AccALL1)
+        np.save(name_head + 'LossALL1.npy', LossALL1)
+        np.save(name_head + net_name + 'AccALL2.npy', AccALL2)
+        np.save(name_head + 'LossALL2.npy', LossALL2)
 
-            ### Dobule training
-            Img_DT = ob.GenImg(orient='H', loc="R", diff=0)
-            inputs = np.zeros([16, 1, 40, 18])
-
-            for db_i in range(200):
-                for i in range(40 // loc):
-                    y = fl.feedforward(t_data, weight)
-                    y = fl.norma_rep(y)
-                    # plt.subplot(2, 4, i+1)
-                    # plt.imshow(y[1].squeeze())
-                    Acc_test_db[s, db_i, i, :] = ob.test(net, y, num_test * 2,
-                                                         t_label,
-                                                         print_test)[:-1]
-                    t_data = np.roll(t_data, -5, axis=2)
-
-                for i in range(16):
-                    _, img_tg = Img_DT.gen_train()
-                    activity_tg = ob.representation(img_tg)
-                    inputs[i, :, :, :] = activity_tg
-                    inputs=fl.norma_rep(inputs)
-
-                weight = fl.update_weight(weight,inputs)
-
-
-            pdb.set_trace()
-            # print(Acc_test_db[s,db_i])
-
-        name_head = foldername + '/db_af_'+str(begin_epoch)+'_05' + net_name
-        np.save(name_head + net_name + 'AccALL.npy', AccALL)
-        np.save(name_head + 'LossALL.npy', LossALL)
-        np.save(name_head + 'Acc_test.npy', Acc_test)
-        np.save(name_head + 'Acc_testfx.npy', Acc_test_fx)
-        np.save(name_head + 'Acc_testdb.npy', Acc_test_db)

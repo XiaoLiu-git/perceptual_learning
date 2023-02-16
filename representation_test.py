@@ -113,7 +113,7 @@ def representation(img, num_x=40, num_theta=18):
             activity[x, theta] = (img_cut * basis_gabor[:, :, theta]).sum()
     return activity
 
-#
+
 # genimg = GenImg(orient='V', loc="R", diff=0)
 #
 # label, img_tg = genimg.gen_train()
@@ -123,9 +123,17 @@ def representation(img, num_x=40, num_theta=18):
 # activity_tg = representation(img_tg)
 # show_img(activity_tg)
 #
+# genimg = GenImg(orient='V', loc="L", diff=0)
+#
+# label, img_tg = genimg.gen_train()
+#
+# show_img(img_tg.T)
+# print(label)
+# activity_tg = representation(img_tg)
+# show_img(activity_tg)
 #
 #
-# genimg = GenImg(orient='V', loc="R", diff=0)
+# genimg = GenImg(orient='H', loc="R", diff=0)
 #
 # label, img_tg = genimg.gen_train()
 #
@@ -135,7 +143,7 @@ def representation(img, num_x=40, num_theta=18):
 # show_img(activity_tg)
 #
 # #
-# genimg = GenImg(orient='V', loc="L", diff=1)
+# genimg = GenImg(orient='H', loc="L", diff=1)
 #
 # label, img_tg = genimg.gen_train()
 #
